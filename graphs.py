@@ -11,14 +11,16 @@ def edmonds_karp(graph, s, t):
         Returns:
             (max_flow, flow_dict) where flow_dict[(u, v)] is the flow on edge (u,v).
     """
-    adj_lst = defaultdict(set)
 
+    # Storing the neighbours of the node
+    adj_lst = defaultdict(set) #{ v : ()}, alternative approach { v: {l: 10}, u: {}}
+ 
     for (u,v) in graph:
         adj_lst[u].add(v)
         adj_lst[v].add(u)
 
     capacities = dict(graph) #original capacities
-    flow = defaultdict(int) # flow on every edge (incl. reverse)
+    flow = defaultdict(int) # flow on every edge (incl. reverse), initially, everything set to 0
 
     def residual(u, v):
         return capacities.get((u,v), 0) - flow[(u,v)] + flow[(v,u)]
@@ -28,6 +30,7 @@ def edmonds_karp(graph, s, t):
         parent = {s: None}
         q = deque([s])
         while q:
+            #FIFO
             u = q.popleft()
             if u == t: 
                 break
@@ -35,6 +38,7 @@ def edmonds_karp(graph, s, t):
                 if v not in parent and residual(u,v) > 0:
                     parent[v] = u
                     q.append(v)
+        # After exploring the whole q, if t is not in parent -> we did not reach it
         if t not in parent:
             return None
         path, cur = [] , t
@@ -62,7 +66,7 @@ def edmonds_karp(graph, s, t):
     return max_flow, dict(flow)
 
 def min_cut(graph, flow, s):
-    """Return (S, T, cut_edges) from the residual graph after max flow."""
+    """Return (S, T, cut_edges) from the RESIDUAL graph after max flow."""
 
     nbrs = defaultdict(set)
     for (u,v) in graph:
@@ -84,3 +88,23 @@ def min_cut(graph, flow, s):
     T = set(nbrs.keys()) - S
     cut = [(u,v) for (u,v) in graph if u in S and v in T]
     return S, T, cut
+
+
+caps = {
+("s", "a"): 10, ("s", "b"): 8,
+("a", "c"): 5, ("a", "b"): 4,
+("b", "d"): 9, ("b", "c"): 6,
+("c", "t"): 10, ("d", "t"): 7,
+("c", "d"): 2,
+}
+mf, fl = edmonds_karp(caps, "s", "t")
+print(f"Maximum flow s -> t : {mf} Gb/s")
+for (u, v), f in sorted(fl.items()):
+    if f > 0 and (u, v) in caps:
+        print(f" {u} -> {v} : {f} / {caps[(u, v)]}")
+
+S, T, cut = min_cut(caps, fl, "s")
+print(f"S = {sorted(S)}")
+print(f"T = {sorted(T)}")
+print(f"Cut edges (to upgrade): {cut}")
+print(f"Sum of cut capacities: {sum(caps[e] for e in cut)}")
