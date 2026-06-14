@@ -25,11 +25,14 @@ def edmonds_karp(graph, s, t):
     def residual(u, v):
         return capacities.get((u,v), 0) - flow[(u,v)] + flow[(v,u)]
     
+    
     def bfs_path():
         """Return a list [s, ..., t] of nodes forming an augmenting path, or None."""
+        
         parent = {s: None}
         q = deque([s])
-        while q:
+        
+        while q: 
             #FIFO
             u = q.popleft()
             if u == t: 
@@ -38,6 +41,7 @@ def edmonds_karp(graph, s, t):
                 if v not in parent and residual(u,v) > 0:
                     parent[v] = u
                     q.append(v)
+            
         # After exploring the whole q, if t is not in parent -> we did not reach it
         if t not in parent:
             return None
@@ -46,15 +50,18 @@ def edmonds_karp(graph, s, t):
             path.append(cur)
             cur = parent[cur]
         return path[::-1]
+       
 
     max_flow = 0
+    ct = 0
     while True:
+        
         path = bfs_path()
         if path is None:
             break
 
         bottleneck = min(residual(path[i], path[i+1]) for i in range(len(path) - 1))
-
+        print(f"Found path ({ct}) with bottleneck {bottleneck}")
         for i in range(len(path) - 1):
             u, v = path[i], path[i+1]
             # Cancel reverse flow first, then add forward
@@ -63,6 +70,7 @@ def edmonds_karp(graph, s, t):
             flow[(u,v)] += bottleneck - cancel
 
         max_flow += bottleneck
+        ct = ct + 1
     return max_flow, dict(flow)
 
 def min_cut(graph, flow, s):
@@ -90,21 +98,21 @@ def min_cut(graph, flow, s):
     return S, T, cut
 
 
-caps = {
-("s", "a"): 10, ("s", "b"): 8,
-("a", "c"): 5, ("a", "b"): 4,
-("b", "d"): 9, ("b", "c"): 6,
-("c", "t"): 10, ("d", "t"): 7,
-("c", "d"): 2,
-}
-mf, fl = edmonds_karp(caps, "s", "t")
-print(f"Maximum flow s -> t : {mf} Gb/s")
-for (u, v), f in sorted(fl.items()):
-    if f > 0 and (u, v) in caps:
-        print(f" {u} -> {v} : {f} / {caps[(u, v)]}")
+# caps = {
+# ("s", "a"): 10, ("s", "b"): 8,
+# ("a", "c"): 5, ("a", "b"): 4,
+# ("b", "d"): 9, ("b", "c"): 6,
+# ("c", "t"): 10, ("d", "t"): 7,
+# ("c", "d"): 2,
+# }
+# mf, fl = edmonds_karp(caps, "s", "t")
+# print(f"Maximum flow s -> t : {mf} Gb/s")
+# for (u, v), f in sorted(fl.items()):
+#     if f > 0 and (u, v) in caps:
+#         print(f" {u} -> {v} : {f} / {caps[(u, v)]}")
 
-S, T, cut = min_cut(caps, fl, "s")
-print(f"S = {sorted(S)}")
-print(f"T = {sorted(T)}")
-print(f"Cut edges (to upgrade): {cut}")
-print(f"Sum of cut capacities: {sum(caps[e] for e in cut)}")
+# S, T, cut = min_cut(caps, fl, "s")
+# print(f"S = {sorted(S)}")
+# print(f"T = {sorted(T)}")
+# print(f"Cut edges (to upgrade): {cut}")
+# print(f"Sum of cut capacities: {sum(caps[e] for e in cut)}")
