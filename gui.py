@@ -4,7 +4,7 @@ import threading
 import time
  
 from PIL import Image, ImageTk, ImageDraw
- 
+from constants import DEBUG_MODE
  
 # Pillow compatibility for old and new versions
 if hasattr(Image, "Resampling"):
@@ -145,8 +145,6 @@ class PixelAnnotationApp:
         # ----------------------------
         self.algorithm_options = [
             "Edmonds-Karp",
-            "Push-Relabel",
-            "Dinic",
             "Boykov-Kolmogorov"
         ]
         self.selected_algorithm = tk.StringVar(value="Edmonds-Karp")
@@ -1079,10 +1077,28 @@ class PixelAnnotationApp:
         """
         if self.image is None:
             return
- 
+
+        green_pixels, red_pixels = self.get_marked_pixels()
+        if len(green_pixels) == 0 or len(red_pixels) == 0:
+            messagebox.showwarning(
+                "Missing strokes",
+                "Before running the algorithm, be sure to mark at least one pixel as foreground and at least one pixel as background"
+            )
+            return
+
         algorithm = self.selected_algorithm.get()
         print(f"Running algorithm: {algorithm}")
  
+        # Clear previous result immediately so the right pane goes blank
+        # while the algorithm runs, making it obvious something changed.
+        self.result_overlay = None
+        self.result_image = None
+        self.update_right_view(preserve_view=True)
+ 
+        # Snapshot inputs before thread starts so drawing during processing
+        # doesn't affect the current run.
+        
+
         # Clear previous result immediately so the right pane goes blank
         # while the algorithm runs, making it obvious something changed.
         self.result_overlay = None
@@ -1093,22 +1109,6 @@ class PixelAnnotationApp:
         self.process_btn.config(state=tk.DISABLED)
         self._start_status_animation(algorithm)
  
-        # Snapshot inputs before thread starts so drawing during processing
-        # doesn't affect the current run.
-        green_pixels, red_pixels = self.get_marked_pixels()
-        if len(green_pixels) == 0 or len(red_pixels) == 0:
-            messagebox.showwarning(
-                "Missing strokes",
-                "Before running the algorithm, be sure to mark at least one pixel as foreground and at least one pixel as background"
-            )
-            overlay = None
-            _overlay = overlay
-            _error = error
-            _elapsed = elapsed
-            self.root.after(0, lambda: self._finish_processing(
-                image_snapshot, _overlay, algorithm, _error, _elapsed
-            ))
-
         image_snapshot = self.image.copy()
  
         def run():
@@ -1134,7 +1134,8 @@ class PixelAnnotationApp:
                     mf, fl = edmonds_karp(graph_caps, 's', 't')
                     S, T, cut = min_cut(graph_caps, fl, 's')
  
-                    print("S is now:", S)
+                    if DEBUG_MODE:
+                        print("S is now:", S)
  
                     for y in range(self.image_height):
                         for x in range(self.image_width):
@@ -1147,8 +1148,9 @@ class PixelAnnotationApp:
                     from boykov_kolmogorov import boykov_kolmogorov
  
                     mf, fl, S, T = boykov_kolmogorov(graph_caps, 's', 't')
- 
-                    print("S is now:", S)
+
+                    if DEBUG_MODE:
+                        print("S is now:", S)
  
                     for y in range(self.image_height):
                         for x in range(self.image_width):

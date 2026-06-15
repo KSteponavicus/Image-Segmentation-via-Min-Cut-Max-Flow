@@ -1,5 +1,5 @@
 from collections import defaultdict, deque
-
+from constants import DEBUG_MODE
 graph = {}
 
 def edmonds_karp(graph, s, t):
@@ -52,7 +52,8 @@ def edmonds_karp(graph, s, t):
        
 
     max_flow = 0
-    ct = 0
+    if DEBUG_MODE:
+        ct = 0
     while True:
         
         path = bfs_path()
@@ -60,7 +61,8 @@ def edmonds_karp(graph, s, t):
             break
 
         bottleneck = min(residual(path[i], path[i+1]) for i in range(len(path) - 1))
-        print(f"Found path ({ct}) with bottleneck {bottleneck}")
+        if DEBUG_MODE:
+            print(f"Found path ({ct}) with bottleneck {bottleneck}")
         for i in range(len(path) - 1):
             u, v = path[i], path[i+1]
             # Cancel reverse flow first, then add forward
@@ -69,7 +71,9 @@ def edmonds_karp(graph, s, t):
             flow[(u,v)] += bottleneck - cancel
 
         max_flow += bottleneck
-        ct = ct + 1
+        if DEBUG_MODE:
+            ct = ct + 1
+            
     return max_flow, dict(flow)
 
 def min_cut(graph, flow, s):
