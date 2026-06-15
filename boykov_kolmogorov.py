@@ -66,11 +66,8 @@ def boykov_kolmogorov(graph, s, t):
         for i in range(len(full_path) - 1):
 
             u, v = full_path[i], full_path[i + 1]
-            if capacities[(u,v)]:
+            flow[(u, v)] += bottleneck
 
-                flow[(u, v)] += bottleneck
-            else:
-                flow[(v,u)] -= bottleneck
 
             # checking if it is an orphan
             if residual(u, v) == 0:
@@ -183,6 +180,11 @@ def boykov_kolmogorov(graph, s, t):
 
         # adopting orphans
         adopt(orphans)
+
+        if s not in active_set:
+            active.append(s); active_set.add(s)
+        if t not in active_set:
+            active.append(t); active_set.add(t)
 
     # find the first part of the min-cut from the source with BFS
     visited = {s}
