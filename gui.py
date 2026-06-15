@@ -1,5 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
+import threading
+import time
 
 from PIL import Image, ImageTk, ImageDraw
 
@@ -176,6 +178,13 @@ class PixelAnnotationApp:
         self._left_base_cache = None
         self._left_base_cache_zoom = None
 
+        # ----------------------------
+        # Status animation state
+        # ----------------------------
+        self._status_anim_job = None
+        self._status_anim_dots = 0
+        self._status_base = ""
+
         # Icons
         self.green_icon = self.make_marker_icon("green")
         self.red_icon = self.make_marker_icon("red")
@@ -337,6 +346,34 @@ class PixelAnnotationApp:
             command=self.process_image
         )
         self.process_btn.pack(side=tk.LEFT, padx=(12, 4))
+
+        self.status_label = tk.Label(toolbar, text="", width=28, anchor="w", fg="#555555")
+        self.status_label.pack(side=tk.LEFT, padx=(8, 4))
+
+    # ============================================================
+    # Status animation
+    # ============================================================
+    def _start_status_animation(self, algorithm_name):
+        """Begin the animated 'Calculating...' label."""
+        self._status_base = f"Running {algorithm_name}"
+        self._status_anim_dots = 0
+        self._tick_status()
+
+    def _tick_status(self):
+        dots = "." * (self._status_anim_dots % 4)
+        self.status_label.config(text=self._status_base + dots)
+        self._status_anim_dots += 1
+        self._status_anim_job = self.root.after(400, self._tick_status)
+
+    def _stop_status_animation(self, final_text=""):
+        if self._status_anim_job is not None:
+            self.root.after_cancel(self._status_anim_job)
+            self._status_anim_job = None
+        self.status_label.config(text=final_text)
+
+    # ============================================================
+    # Icons
+    # ============================================================
 
     def make_marker_icon(self, color):
         """
@@ -1043,75 +1080,116 @@ class PixelAnnotationApp:
         if self.image is None:
             return
 
-        green_pixels, red_pixels = self.get_marked_pixels()
-       
-
-        from image_loader import image_to_graph
-        graph_caps = image_to_graph(self.image, green_pixels, red_pixels)
-
-
         algorithm = self.selected_algorithm.get()
         print(f"Running algorithm: {algorithm}")
 
-        match algorithm:
-            case "Edmonds-Karp":
-                from graphs import edmonds_karp, min_cut
+        # Clear previous result immediately so the right pane goes blank
+        # while the algorithm runs, making it obvious something changed.
+        self.result_overlay = None
+        self.result_image = None
+        self.update_right_view(preserve_view=True)
 
-                mf, fl = edmonds_karp(graph_caps, 's', 't')
-                S, T, cut = min_cut(graph_caps, fl, 's')
+        # Disable button and start animated status label
+        self.process_btn.config(state=tk.DISABLED)
+        self._start_status_animation(algorithm)
 
-                print("S is now:", S)
+        # Snapshot inputs before thread starts so drawing during processing
+        # doesn't affect the current run.
+        green_pixels, red_pixels = self.get_marked_pixels()
+        image_snapshot = self.image.copy()
+
+        def run():
+            overlay = None
+            error = None
+            elapsed = None
+            try:
+                from image_loader import image_to_graph
+                graph_caps = image_to_graph(image_snapshot, green_pixels, red_pixels)
 
                 overlay = Image.new(
                     "RGBA",
                     (self.image_width, self.image_height),
                     (0, 0, 0, 0)
                 )
-
                 px = overlay.load()
 
-                for y in range(self.image_height):
-                    for x in range(self.image_width):
-                        if (x, y) in S:
-                            px[x, y] = (0, 255, 0, 100)
-                        if (x, y) in T:
-                            px[x, y] = (255, 0, 0, 100)
+                t_start = time.perf_counter()
 
-            case _:
-                print("Unknown algorithm!")
+                if algorithm == "Edmonds-Karp":
+                    from graphs import edmonds_karp, min_cut
+
+                    mf, fl = edmonds_karp(graph_caps, 's', 't')
+                    S, T, cut = min_cut(graph_caps, fl, 's')
+
+                    print("S is now:", S)
+
+                    for y in range(self.image_height):
+                        for x in range(self.image_width):
+                            if (x, y) in S:
+                                px[x, y] = (0, 255, 0, 100)
+                            if (x, y) in T:
+                                px[x, y] = (255, 0, 0, 100)
+
+                elif algorithm == "Boykov-Kolmogorov":
+                    from boykov_kolmogorov import boykov_kolmogorov
+
+                    mf, fl, S, T = boykov_kolmogorov(graph_caps, 's', 't')
+
+                    print("S is now:", S)
+
+                    for y in range(self.image_height):
+                        for x in range(self.image_width):
+                            if (x, y) in S:
+                                px[x, y] = (0, 255, 0, 100)
+                            elif (x, y) in T:
+                                px[x, y] = (255, 0, 0, 100)
+
+                else:
+                    print("Unknown algorithm!")
+                    overlay = None
+
+                elapsed = time.perf_counter() - t_start
+                print(f"--- [TIMER DEB_UG] {algorithm} took {elapsed:.4f} seconds ---")
+
+            except Exception as e:
+                error = e
+                import traceback
+                traceback.print_exc()
+
+            finally:
+                _overlay = overlay
+                _error = error
+                _elapsed = elapsed
+                self.root.after(0, lambda: self._finish_processing(
+                    image_snapshot, _overlay, algorithm, _error, _elapsed
+                ))
+
+        threading.Thread(target=run, daemon=True).start()
+
+    def _finish_processing(self, image_snapshot, overlay, algorithm, error=None, elapsed=None):
+        # Always re-enable the button regardless of success or failure
+        self.process_btn.config(state=tk.NORMAL)
+
+        if error is not None:
+            self._stop_status_animation(final_text="Error — see console")
+            return
+
+        if elapsed is not None:
+            final_text = f"{algorithm} done ({elapsed:.2f}s)"
+        else:
+            final_text = f"{algorithm} done"
+
+        self._stop_status_animation(final_text=final_text)
 
         w = self.image_width
         h = self.image_height
 
-        result = self.image.copy()
+        result = image_snapshot.copy()
         px = result.load()
-
-        
-
 
         self.result_overlay = overlay
         self.result_image = result
         self.update_right_view(preserve_view=True)
-        
-        
-        def get_marked_pixels(self):
-            green_pixels = []
-            red_pixels = []
-
-            for y in range(self.image_height):
-                row_offset = y * self.image_width
-
-                for x in range(self.image_width):
-                    idx = row_offset + x
-                    owner = self.owner_mask[idx]
-
-                    if owner == 1:
-                        green_pixels.append((x, y))
-                    elif owner == 2:
-                        red_pixels.append((x, y))
-
-            return green_pixels, red_pixels
-
 
 
 def create_app_icon():

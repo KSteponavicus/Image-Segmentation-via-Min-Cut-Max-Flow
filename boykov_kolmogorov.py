@@ -3,23 +3,20 @@ from collections import defaultdict, deque
 def boykov_kolmogorov(graph, s, t):
 
     # Storing the neighbours of the node
-    adj_lst = defaultdict(set) #{ v : ()}, alternative approach { v: {l: 10}, u: {}}
-    capacities = dict(graph) #original capacities
+    adj_lst = defaultdict(list) #{ node : [neighbours]}
+    capacities = dict(graph) # original capacities
 
- 
+    # filling the adjacency list
     for (u,v) in graph:
-        adj_lst[u].add(v)
-        adj_lst[v].add(u)
-        if (v,u) not in capacities:
-            capacities[(v,u)] = 0 
+        adj_lst[u].append(v)
 
     flow = defaultdict(int)
 
-        
+    # putting both s and t in the active state    
     active = deque([s,t])
     active_set = {s, t}
 
-    tree = defaultdict(str) # "S" "T" ""
+    tree = defaultdict(str) # storing the type of tree: "S", "T", ""
     parent = {s: None, t: None}
 
     tree[s] = "S"
@@ -28,7 +25,9 @@ def boykov_kolmogorov(graph, s, t):
 
     def residual(u, v):
         return capacities.get((u,v), 0) - flow[(u,v)] + flow[(v,u)]
+    
 
+    # finding the path from a given node to either s or t
     def path_to_root(node):
         path = []
         while node is not None:
@@ -37,7 +36,7 @@ def boykov_kolmogorov(graph, s, t):
         return path
 
         
-
+    # checks if a node belongs to the tree of a given type
     def is_in_tree(node, type):
 
         curr = node
@@ -49,8 +48,9 @@ def boykov_kolmogorov(graph, s, t):
             curr = parent.get(curr, None)
         return False
 
+    # augmenting the flow in the path by the bottleneck and searching for the orphans
     def augment(node_S, node_T):
-        path_S = path_to_root(node_S)
+        path_S = path_to_root(node_S) # starts from the node to the source
         path_S = path_S[::-1]              # now goes s → … → node_s
 
         path_T = path_to_root(node_T) # goes node_t → … → t
@@ -60,9 +60,13 @@ def boykov_kolmogorov(graph, s, t):
         bottleneck = min(residual(full_path[i], full_path[i + 1]) for i in range(len(full_path) - 1))
 
         orphans = set()
+
+        # checking for orphans (main condition - residual is 0)
         for i in range(len(full_path) - 1):
+            
             u, v = full_path[i], full_path[i + 1]
             flow[(u, v)] += bottleneck
+
             if residual(u, v) == 0:
                 if tree[u] == "S" and tree[v] == "S" and parent[v] == u:
                     parent[v] = None
@@ -160,7 +164,25 @@ def boykov_kolmogorov(graph, s, t):
 
         adopt(orphans)
 
-    return max_flow
+        if s not in active_set:
+            active.append(s); active_set.add(s)
+        if t not in active_set:
+            active.append(t); active_set.add(t)
+
+    visited = {s}
+    queue = deque([s])
+    while queue:
+        u = queue.popleft()
+        for v in adj_lst[u]:
+            if v not in visited and residual(u, v) > 0:
+                visited.add(v)
+                queue.append(v)
+
+    S = visited - {'s', 't'}
+    T = set(adj_lst.keys()) - visited - {'s', 't'}
+
+    return max_flow, flow, S, T
+
 
 
  
@@ -176,10 +198,10 @@ if __name__ == "__main__":
  
     all_pass = True
     for graph, s, t, expected, desc in tests:
-        result = boykov_kolmogorov(graph, s, t)
-        status = "PASS" if result == expected else "FAIL"
+        max_flow, flow, S, T = boykov_kolmogorov(graph, s, t)
+        status = "PASS" if max_flow == expected else "FAIL"
         if status == "FAIL":
             all_pass = False
-        print(f"[{status}] {desc}: got {result}, expected {expected}")
+        print(f"[{status}] {desc}: got {max_flow}, expected {expected}")
  
     print("\nAll tests passed!" if all_pass else "\nSome tests FAILED.")

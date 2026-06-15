@@ -13,11 +13,10 @@ def edmonds_karp(graph, s, t):
     """
 
     # Storing the neighbours of the node
-    adj_lst = defaultdict(set) #{ v : ()}, alternative approach { v: {l: 10}, u: {}}
+    adj_lst = defaultdict(list) #{ v : []} 
  
     for (u,v) in graph:
-        adj_lst[u].add(v)
-        adj_lst[v].add(u)
+        adj_lst[u].append(v)
 
     capacities = dict(graph) #original capacities
     flow = defaultdict(int) # flow on every edge (incl. reverse), initially, everything set to 0

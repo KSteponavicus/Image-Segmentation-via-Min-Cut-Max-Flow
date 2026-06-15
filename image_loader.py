@@ -26,6 +26,8 @@ def get_distributions(image, pixels):
 
 def image_to_graph(image, fg_pixels, bg_pixels, sigma = 30):
 
+    fg_pixels = set(fg_pixels)   
+    bg_pixels = set(bg_pixels)
 
     # inf = LAMBDA
     inf = 10**9
@@ -43,13 +45,19 @@ def image_to_graph(image, fg_pixels, bg_pixels, sigma = 30):
 
             if (x, y) in fg_pixels:
                  graph_caps['s', (x, y)] = inf
+                 graph_caps[ (x, y), 's'] = 0
                  graph_caps[(x, y), 't'] = 0
+                 graph_caps['t', (x, y)] = 0
             elif (x, y) in bg_pixels:
                  graph_caps['s', (x, y)] = 0
+                 graph_caps[(x,y), 's'] = 0
                  graph_caps[(x, y), 't'] = inf
+                 graph_caps['t', (x,y)] = 0
             else:
                 graph_caps['s', (x,y)] = int(-math.log2(proba_bg[Ip]))
                 graph_caps[(x, y), 't'] = int(-math.log2(proba_fg[Ip]))
+                graph_caps[(x, y), 's'] = 0 
+                graph_caps['t', (x, y)] = 0
 
             for dx, dy in [(1,0), (0,1)]:
                 nx = x + dx
@@ -58,7 +66,7 @@ def image_to_graph(image, fg_pixels, bg_pixels, sigma = 30):
                 if 0 <= nx < width and 0 <= ny < height:
                     Iq = image.getpixel((nx, ny))[0]
 
-                    w = int(LAMBDA * math.exp(-((Ip-Iq)**2)/(2*sigma**2)))
+                    w = max(1,int(LAMBDA * math.exp(-((Ip-Iq)**2)/(2*sigma**2))))
 
                     graph_caps[(x,y), (nx, ny)] = w 
                     graph_caps[(nx, ny), (x,y)] = w
