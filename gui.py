@@ -1108,7 +1108,7 @@ class PixelAnnotationApp:
             self.root.after(0, lambda: self._finish_processing(
                 image_snapshot, _overlay, algorithm, _error, _elapsed
             ))
- 
+
         image_snapshot = self.image.copy()
  
         def run():
