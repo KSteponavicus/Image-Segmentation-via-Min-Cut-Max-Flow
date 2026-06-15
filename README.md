@@ -140,8 +140,6 @@ The `test_images` directory contains sample images.
 
 ---
 
----
----
 
 
 
@@ -154,9 +152,6 @@ The `test_images` directory contains sample images.
 | **Approach** | Global BFS | Local tree search |
 | **Best For** | General graphs | Image segmentation |
 | **Speed** | Moderate | Faster than EK for image segmentation |
-| **Complexity** | O(V·E²) | ~O(V²·E) |
+| **Complexity** | O(V·E²) | O(V²·E·|c|) |
 
----
-
-
-
+Note: |c| represent the cost of the minimum cut.
