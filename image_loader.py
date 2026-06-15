@@ -2,11 +2,7 @@ from collections import defaultdict
 from PIL import Image
 import math
 
-# image = Image.open("small_test.jpg")
-# image2 = Image.open("dog.jpg")
-
-LAMBDA = 100
-
+LAMBDA = 100 
 
 def get_distributions(image, pixels):
     eps = 0.001
@@ -19,9 +15,6 @@ def get_distributions(image, pixels):
 
     total = sum(proba_bg.values(), 0.0)
     return {k: v / total for k, v in proba_bg.items()}
-
-# print(get_distributions(image, [(0,1), (1,0)]))
-
 
 
 def image_to_graph(image, fg_pixels, bg_pixels, sigma = 30):
@@ -71,5 +64,3 @@ def image_to_graph(image, fg_pixels, bg_pixels, sigma = 30):
                 
 
     return graph_caps
-
-# print(image_to_graph(image))

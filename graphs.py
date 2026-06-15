@@ -3,7 +3,6 @@ from constants import DEBUG_MODE
 graph = {}
 
 def edmonds_karp(graph, s, t):
-
     """
         Args:
             graph_caps: dict (u, v) -> capacity (only forward edges listed).
