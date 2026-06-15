@@ -73,7 +73,7 @@ def edmonds_karp(graph, s, t):
         max_flow += bottleneck
         if DEBUG_MODE:
             ct = ct + 1
-            
+
     return max_flow, dict(flow)
 
 def min_cut(graph, flow, s):
@@ -100,22 +100,3 @@ def min_cut(graph, flow, s):
     cut = [(u,v) for (u,v) in graph if u in S and v in T]
     return S, T, cut
 
-
-# caps = {
-# ("s", "a"): 10, ("s", "b"): 8,
-# ("a", "c"): 5, ("a", "b"): 4,
-# ("b", "d"): 9, ("b", "c"): 6,
-# ("c", "t"): 10, ("d", "t"): 7,
-# ("c", "d"): 2,
-# }
-# mf, fl = edmonds_karp(caps, "s", "t")
-# print(f"Maximum flow s -> t : {mf} Gb/s")
-# for (u, v), f in sorted(fl.items()):
-#     if f > 0 and (u, v) in caps:
-#         print(f" {u} -> {v} : {f} / {caps[(u, v)]}")
-
-# S, T, cut = min_cut(caps, fl, "s")
-# print(f"S = {sorted(S)}")
-# print(f"T = {sorted(T)}")
-# print(f"Cut edges (to upgrade): {cut}")
-# print(f"Sum of cut capacities: {sum(caps[e] for e in cut)}")

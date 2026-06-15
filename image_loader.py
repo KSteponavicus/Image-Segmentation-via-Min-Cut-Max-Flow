@@ -29,7 +29,7 @@ def image_to_graph(image, fg_pixels, bg_pixels, sigma = 30):
     fg_pixels = set(fg_pixels)   
     bg_pixels = set(bg_pixels)
 
-    # inf = LAMBDA
+   
     inf = 10**9
     proba_bg= get_distributions(image, bg_pixels)
     proba_fg = get_distributions(image, fg_pixels)
