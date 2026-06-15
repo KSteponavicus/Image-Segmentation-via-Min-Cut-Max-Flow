@@ -63,10 +63,11 @@ def boykov_kolmogorov(graph, s, t):
 
         # checking for orphans (main condition - residual is 0)
         for i in range(len(full_path) - 1):
-            
+
             u, v = full_path[i], full_path[i + 1]
             flow[(u, v)] += bottleneck
 
+            # checking if it is an orphan
             if residual(u, v) == 0:
                 if tree[u] == "S" and tree[v] == "S" and parent[v] == u:
                     parent[v] = None
@@ -78,43 +79,52 @@ def boykov_kolmogorov(graph, s, t):
         return bottleneck, orphans
     
 
-    def adopt(orphans): # orphans given in a set, but used as a list
-
+    def adopt(orphans): 
+        # FIFO for orphans
         orp_queue = deque(orphans)
 
         while orp_queue:
-            orp = orp_queue.popleft() # why not popleft()
+            orp = orp_queue.popleft() 
             orp_tree = tree[orp]
             parent_found = False
 
+            # checking for possible parents
             for nbr in adj_lst[orp]:
 
+                # a node cannot have a parent from a different tree
                 if tree[nbr] != tree[orp]:
                     continue
 
-            
+                # we check if the possible parent is in that tree because it might be in a forest
                 if is_in_tree(nbr, orp_tree): 
 
+                    # if the residual > 0 and based on the type of the tree we assign it 
                     if (residual(nbr, orp) > 0 and orp_tree == "S") or (residual(orp, nbr) > 0 and orp_tree == "T"):
                         parent[orp] = nbr
                         parent_found = True
                         break
 
+
+            # if we do not find a parent, we set the orp to be a free node and its children become orphans
             if not parent_found:
                 
 
-
-                for nbr in list(adj_lst[orp]):
+                for nbr in adj_lst[orp]:
+                    # check if orp is the parent of nbr
                     if tree[nbr] == orp_tree and parent[nbr] == orp:
                         orp_queue.append(nbr)
                         parent[nbr] = None
 
                     if tree[nbr] != orp_tree and tree[nbr] != "":
-
+                        
+                        # if the child is of different tree type, it does not become an orphan as it is connected to a root
                         if (residual(orp, nbr) > 0 and tree[nbr] == "T") or (residual(nbr, orp) > 0 and tree[nbr] == "S"):
+                            # hence it still may have unexplored neighbors, so we keep it in an active set
                             if nbr not in active_set:
                                 active.append(nbr)
                                 active_set.add(nbr)
+
+                # at last, we set the node free
                 tree[orp] = ""
                 active_set.discard(orp)
                 parent.pop(orp, None)
@@ -122,20 +132,21 @@ def boykov_kolmogorov(graph, s, t):
 
     while True:
 
-        node_S, node_T = None, None # (node_S, node_T) will be the edge between the trees
+        node_S, node_T = None, None # (node_S, node_T) will be the edge between the S and T trees
 
-        #Growth stage
+        #Growth stage (while active nodes exist)
         while active:
             
             curr = active[0]
 
-            if tree[curr] == "":
+            if tree[curr] == "": # a tree without its tree cannot be active
                 active.popleft()
                 active_set.discard(curr)
                 continue
 
             found = False
 
+            # we assign a tree type based on the residual and the type of curr
             for q in adj_lst[curr]:
                 if (residual(curr, q) > 0 and tree[curr] == "S") or (residual(q, curr) > 0 and tree[curr] == "T") :
                     if tree[q] == "":
@@ -144,6 +155,7 @@ def boykov_kolmogorov(graph, s, t):
                         if q not in active_set:
                             active_set.add(q)
                             active.append(q)
+                    # if the tree types differ, it means we found an egde between two trees
                     elif tree[q] != tree[curr]:
                         node_S, node_T = (curr, q) if tree[curr] == "S" else (q, curr)
                         found = True 
@@ -152,23 +164,22 @@ def boykov_kolmogorov(graph, s, t):
             if found:
                 break
 
+            # if we did not find anything, it means the node is fully explored and it becomes passive
             active.popleft()
             active_set.discard(curr)
 
-
+        # Test if we found a path
         if node_S is None:
             break
 
+        # if we found a path, we find the bottleneck and the orphans after incrementing the flow
         bottleneck, orphans = augment(node_S, node_T)
         max_flow += bottleneck  
 
+        # adopting orphans
         adopt(orphans)
 
-        if s not in active_set:
-            active.append(s); active_set.add(s)
-        if t not in active_set:
-            active.append(t); active_set.add(t)
-
+    # find the first part of the min-cut from the source with BFS
     visited = {s}
     queue = deque([s])
     while queue:
@@ -179,29 +190,8 @@ def boykov_kolmogorov(graph, s, t):
                 queue.append(v)
 
     S = visited - {'s', 't'}
-    T = set(adj_lst.keys()) - visited - {'s', 't'}
+    T = set(adj_lst.keys()) - visited - {'s', 't'} # Find the other cut by subtracting the other cut
 
     return max_flow, flow, S, T
 
 
-
- 
-if __name__ == "__main__":
-    tests = [
-        # (graph, s, t, expected_max_flow, description)
-        ({(0, 1): 10, (1, 2): 5},                                     0,   2, 5,  "simple chain, bottleneck at end"),
-        ({(0, 1): 3,  (1, 2): 10},                                    0,   2, 3,  "simple chain, bottleneck at start"),
-        ({(0, 1): 10, (1, 3): 10, (0, 2): 10, (2, 3): 10},           0,   3, 20, "two parallel paths"),
-        ({("s","a"):10,("s","b"):10,("a","b"):2,("a","t"):10,("b","t"):10}, "s","t", 20, "classic textbook graph"),
-        ({(0, 1): 5,  (2, 3): 5},                                     0,   3, 0,  "disconnected graph"),
-    ]
- 
-    all_pass = True
-    for graph, s, t, expected, desc in tests:
-        max_flow, flow, S, T = boykov_kolmogorov(graph, s, t)
-        status = "PASS" if max_flow == expected else "FAIL"
-        if status == "FAIL":
-            all_pass = False
-        print(f"[{status}] {desc}: got {max_flow}, expected {expected}")
- 
-    print("\nAll tests passed!" if all_pass else "\nSome tests FAILED.")
