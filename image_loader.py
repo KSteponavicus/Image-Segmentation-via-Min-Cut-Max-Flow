@@ -45,19 +45,15 @@ def image_to_graph(image, fg_pixels, bg_pixels, sigma = 30):
 
             if (x, y) in fg_pixels:
                  graph_caps['s', (x, y)] = inf
-                 graph_caps[ (x, y), 's'] = 0
-                 graph_caps[(x, y), 't'] = 0
-                 graph_caps['t', (x, y)] = 0
+
             elif (x, y) in bg_pixels:
-                 graph_caps['s', (x, y)] = 0
-                 graph_caps[(x,y), 's'] = 0
+
                  graph_caps[(x, y), 't'] = inf
-                 graph_caps['t', (x,y)] = 0
+                
             else:
                 graph_caps['s', (x,y)] = int(-math.log2(proba_bg[Ip]))
                 graph_caps[(x, y), 't'] = int(-math.log2(proba_fg[Ip]))
-                graph_caps[(x, y), 's'] = 0 
-                graph_caps['t', (x, y)] = 0
+
 
             for dx, dy in [(1,0), (0,1)]:
                 nx = x + dx

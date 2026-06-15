@@ -9,6 +9,7 @@ def boykov_kolmogorov(graph, s, t):
     # filling the adjacency list
     for (u,v) in graph:
         adj_lst[u].append(v)
+        adj_lst[v].append(u)
 
     flow = defaultdict(int)
 
@@ -65,7 +66,11 @@ def boykov_kolmogorov(graph, s, t):
         for i in range(len(full_path) - 1):
 
             u, v = full_path[i], full_path[i + 1]
-            flow[(u, v)] += bottleneck
+            if capacities[(u,v)]:
+
+                flow[(u, v)] += bottleneck
+            else:
+                flow[(v,u)] -= bottleneck
 
             # checking if it is an orphan
             if residual(u, v) == 0:

@@ -17,6 +17,7 @@ def edmonds_karp(graph, s, t):
  
     for (u,v) in graph:
         adj_lst[u].append(v)
+        adj_lst[v].append(u)
 
     capacities = dict(graph) #original capacities
     flow = defaultdict(int) # flow on every edge (incl. reverse), initially, everything set to 0
