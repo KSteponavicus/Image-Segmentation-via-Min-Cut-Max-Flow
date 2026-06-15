@@ -1096,6 +1096,19 @@ class PixelAnnotationApp:
         # Snapshot inputs before thread starts so drawing during processing
         # doesn't affect the current run.
         green_pixels, red_pixels = self.get_marked_pixels()
+        if len(green_pixels) == 0 or len(red_pixels) == 0:
+            messagebox.showwarning(
+                "Missing strokes",
+                "Before running the algorithm, be sure to mark at least one pixel as foreground and at least one pixel as background"
+            )
+            overlay = None
+            _overlay = overlay
+            _error = error
+            _elapsed = elapsed
+            self.root.after(0, lambda: self._finish_processing(
+                image_snapshot, _overlay, algorithm, _error, _elapsed
+            ))
+
         image_snapshot = self.image.copy()
 
         def run():
