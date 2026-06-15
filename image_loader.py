@@ -26,6 +26,7 @@ def get_distributions(image, pixels):
 
 def image_to_graph(image, fg_pixels, bg_pixels, sigma = 30):
 
+
     fg_pixels = set(fg_pixels)   
     bg_pixels = set(bg_pixels)
 
@@ -44,11 +45,12 @@ def image_to_graph(image, fg_pixels, bg_pixels, sigma = 30):
             Ip = image.getpixel((x, y))[0]
 
             if (x, y) in fg_pixels:
-                 graph_caps['s', (x, y)] = inf
+                graph_caps['s', (x, y)] = inf
+                graph_caps[(x,y), 't'] = 0  
 
             elif (x, y) in bg_pixels:
-
-                 graph_caps[(x, y), 't'] = inf
+                graph_caps['s', (x,y)] = 0            
+                graph_caps[(x,y), 't'] = inf
                 
             else:
                 graph_caps['s', (x,y)] = int(-math.log2(proba_bg[Ip]))
